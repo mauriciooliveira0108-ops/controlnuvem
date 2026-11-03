@@ -7,6 +7,9 @@ on:
     paths: ["FlipperZeroMobile/**", ".github/workflows/android.yml"]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -35,3 +38,14 @@ jobs:
         with:
           name: unit-test-reports
           path: FlipperZeroMobile/app/build/reports/tests/
+      - name: Publicar APK como release (download direto)
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="debug-${GITHUB_SHA::7}"
+          cp app/build/outputs/apk/debug/app-debug.apk "FlipperZeroMobile-debug-${GITHUB_SHA::7}.apk"
+          gh release create "$TAG" "FlipperZeroMobile-debug-${GITHUB_SHA::7}.apk" \
+            --target "$GITHUB_SHA" --prerelease \
+            --title "Flipper Zero Mobile (debug ${GITHUB_SHA::7})" \
+            --notes "APK de debug gerado automaticamente pelo CI a partir do commit ${GITHUB_SHA}. Instale com adb install -r ou abrindo o arquivo no celular (Android 8.0+)."
