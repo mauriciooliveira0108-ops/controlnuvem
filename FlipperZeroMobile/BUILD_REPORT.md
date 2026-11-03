@@ -9,10 +9,9 @@ Data: 2026-11-03 · Ambiente: contêiner Linux na nuvem (JDK 21, Gradle 8.14.3, 
 | Código-fonte completo (69 arquivos Kotlin, ~6,9 mil linhas em `main`) | ✅ Escrito |
 | Testes unitários JVM da camada `domain/` + `core/util` | ✅ **48 testes, 0 falhas** (executados de verdade) |
 | Type-check da camada `hardware/` (NFC, BLE, GATT, Wi-Fi, IR, Device, Status, Haptics, Permissions) contra o `android.jar` real da API 35 | ✅ Compilou sem erros |
-| `./gradlew assembleDebug` neste ambiente | ❌ **Bloqueado**: não executado |
-| `./gradlew testDebugUnitTest` (via AGP) neste ambiente | ❌ **Bloqueado**: não executado |
-| Compilação das telas Compose, ViewModels, Room (KSP) e DataStore | ⏳ **Pendente**: depende do Google Maven |
-| APK de debug | ⏳ **Pendente**: será gerado pelo GitHub Actions |
+| `./gradlew testDebugUnitTest` no GitHub Actions (run #3) | ✅ **BUILD SUCCESSFUL**: todos os testes passaram |
+| `./gradlew assembleDebug` no GitHub Actions (run #3) | ✅ **BUILD SUCCESSFUL**: app inteiro compilado (Compose, Room/KSP, DataStore), 0 erros |
+| APK de debug | ✅ Gerado: artefato `flipper-zero-mobile-debug-apk` (~10,7 MB, expira em 01/02/2027) |
 | Testes em aparelho físico | ⏳ **Pendente** |
 
 ## Bloqueio técnico real
@@ -23,7 +22,15 @@ A política de rede deste ambiente **bloqueia `dl.google.com`** (resposta 403 do
 - o Android Gradle Plugin (`com.android.tools.build:gradle`);
 - todas as bibliotecas AndroidX/Jetpack Compose/Room/DataStore (publicadas só no Google Maven).
 
-Usar um espelho de terceiros para contornar o bloqueio foi recusado pela política do ambiente, então não foi tentado. Por isso `assembleDebug` não pôde ser executado aqui.
+Usar um espelho de terceiros para contornar o bloqueio foi recusado pela política do ambiente, então não foi tentado. Por isso a compilação completa foi feita no GitHub Actions.
+
+### Histórico do CI
+
+| Run | Resultado | Causa / correção |
+|---|---|---|
+| #1 | ❌ antes do Gradle | `android-actions/setup-android@v3` falhou ao instalar o pacote obsoleto `tools` → etapa removida (o runner já tem o SDK) |
+| #2 | ❌ `:app:kspDebugKotlin` | KDoc `[len][type][data...]` em `BleParsing.kt` quebrava o parser do KSP → comentário reescrito |
+| #3 | ✅ sucesso | `testDebugUnitTest` e `assembleDebug` OK; APK publicado como artefato |
 
 ### O que foi feito para verificar mesmo assim
 
@@ -78,30 +85,31 @@ Testes instrumentados (`app/src/androidTest/NavigationTest.kt`) foram escritos e
 | Sem `neverForLocation`, o Android 12+ retém resultados BLE sem localização | `BLUETOOTH_SCAN` declarado com `usesPermissionFlags="neverForLocation"` |
 | Canais Wi-Fi de 4,9 GHz (Japão) calculados com valores negativos | Fórmula separada para 4910–4995 MHz |
 | `ConnectivityManager.NetworkCallback(flags)` só existe no Android 12+ | Callback construído condicionalmente por versão |
+| `setup-android@v3` quebrado no CI | Removido; uso do SDK pré-instalado no runner |
+| KDoc `[data...]` rejeitado pelo KSP | Comentário reescrito |
 | Lógica de filtro BLE e parser de códigos IR presos a classes Android | Movidos para `domain/` e cobertos por testes |
 
 ## Pendências reais
 
-1. Executar `./gradlew testDebugUnitTest assembleDebug` com acesso ao Google Maven (GitHub Actions ou máquina local) e corrigir eventuais erros de compilação nas telas Compose, ViewModels, Room e DataStore. Essas camadas foram revisadas manualmente, mas **não compiladas**.
-2. Caminho do APK após o build: `FlipperZeroMobile/app/build/outputs/apk/debug/app-debug.apk` (ou o artefato `flipper-zero-mobile-debug-apk` do workflow).
-3. Validar em aparelhos reais: leitura NFC (NTAG, ISO-DEP), varredura BLE e GATT, varredura Wi-Fi com throttling e transmissão IR em um aparelho com emissor.
-4. Executar `connectedDebugAndroidTest`.
+1. Caminho do APK em builds locais: `FlipperZeroMobile/app/build/outputs/apk/debug/app-debug.apk`; no CI, o artefato `flipper-zero-mobile-debug-apk` (ZIP contendo `app-debug.apk`).
+2. Validar em aparelhos reais: leitura NFC (NTAG, ISO-DEP), varredura BLE e GATT, varredura Wi-Fi com throttling e transmissão IR em um aparelho com emissor.
+3. Executar `connectedDebugAndroidTest`.
 
 ## Critérios de aceitação
 
 - [x] Projeto Android estruturado
-- [x] Tela inicial funcional *(código escrito; execução pendente)*
-- [x] Navegação entre módulos *(código escrito; execução pendente)*
+- [x] Tela inicial funcional *(compila; execução em aparelho pendente)*
+- [x] Navegação entre módulos *(compila; execução em aparelho pendente)*
 - [x] Interface laranja/preto com estética retrô *(código escrito; visual não verificado em aparelho)*
 - [x] Scanner NFC integrado *(camada de hardware compilada contra android.jar)*
 - [x] Scanner BLE integrado *(camada de hardware compilada contra android.jar)*
 - [x] Painel Wi-Fi integrado *(camada de hardware compilada contra android.jar)*
 - [x] Controle IR com detecção de compatibilidade *(codificadores testados; hardware compilado)*
 - [x] Painel de informações do dispositivo *(provider compilado contra android.jar)*
-- [x] Terminal de atividade *(lógica testada; UI não compilada)*
-- [x] Persistência local *(código escrito; Room/KSP não compilado)*
+- [x] Terminal de atividade *(lógica testada; UI compilada)*
+- [x] Persistência local *(Room/KSP compilado no CI)*
 - [x] Permissões tratadas corretamente *(planner testado; manifesto validado)*
 - [x] Testes executados quando possível *(48 testes JVM executados)*
-- [ ] **Build de debug executado**: pendente (bloqueio de rede)
+- [x] Build de debug executado *(GitHub Actions run #3)*
 - [x] README completo
 - [x] Relatório de build
