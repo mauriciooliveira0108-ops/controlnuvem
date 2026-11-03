@@ -2,7 +2,7 @@ package com.flippermobile.domain.ble
 
 import com.flippermobile.core.util.HexUtils
 
-/** Estrutura AD (Advertising Data) do Bluetooth Core Spec: [len][type][data...]. */
+/** Estrutura AD (Advertising Data) do Bluetooth Core Spec: comprimento, tipo e dados. */
 data class AdStructure(val type: Int, val typeName: String, val dataHex: String)
 
 object BleParsing {
